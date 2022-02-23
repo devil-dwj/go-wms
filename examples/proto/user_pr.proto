@@ -1,0 +1,32 @@
+﻿syntax="proto3";
+
+package jj.wms;
+
+option go_package = "./;pb";
+
+message LoginReq
+{
+	string account = 1; //域账号
+}
+
+
+message LoginRsp
+{
+    int32 passport = 1;                    // 用户在数据库中的ID
+    string name = 2;                       // 名称
+	string role = 3;                       // 用户角色(wms_manager:揽月管理员)
+}
+
+
+
+message PrPsLogin
+{
+	enum Result
+    {
+        OK = 0;                                         // 成功
+        INVALID = 1;                                    // 无效用户
+    }
+	LoginReq req = 1;
+	LoginRsp rsp = 2;
+	Result result = 3;                                  // 结果
+}

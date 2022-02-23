@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package jj.wms;
+
+option go_package = "./;pb";
+
+import "google/api/annotations.proto";
+import "user_pr.proto";
+
+service User {
+    rpc Login(LoginReq) returns (LoginRsp) {
+        option (google.api.http) = {
+            post: "api/v1/login"
+            body: "*"
+        };
+    };
+
+}
