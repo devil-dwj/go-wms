@@ -5,7 +5,7 @@ import (
 
 	"github.com/devil-dwj/go-wms/log"
 	"go.uber.org/zap"
-	"gorm.io/driver/mysql"
+	mysqlraw "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
@@ -19,7 +19,7 @@ func WmsMysql(dsn string, l *zap.Logger) error {
 	zl.LogMode(gormlogger.Silent)
 	zl.SlowHold(time.Second)
 
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+	db, err := gorm.Open(mysqlraw.Open(dsn), &gorm.Config{
 		Logger: zl,
 	})
 	if err != nil {
