@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/devil-dwj/go-wms/api"
+	"github.com/devil-dwj/go-wms/config"
 	"github.com/devil-dwj/go-wms/examples/pb"
 	"github.com/devil-dwj/go-wms/log"
 )
@@ -21,7 +22,15 @@ func (u *UserServer) Login(req *pb.LoginReq) (*pb.LoginRsp, error) {
 	}, nil
 }
 
+type Config struct {
+	WmsDSN string
+	Port   uint16
+}
+
 func main() {
+
+	c := new(Config)
+	config.MustLoad("config.json", c)
 
 	l := log.MustLog("examples/example.log")
 

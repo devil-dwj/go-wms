@@ -6,32 +6,24 @@ import (
 	"io/ioutil"
 )
 
-type Config struct {
-	WmsDSN string
-	Port   uint16
+func MustLoad(path string, v interface{}) {
+	if err := LoadConfig(path, v); err != nil {
+		panic(err)
+	}
 }
 
-func NewConfig() *Config {
-	return &Config{}
-}
-
-func MustLoad(path string) *Config {
-	c := &Config{}
-	c.LoadConfig(path)
-
-	return c
-}
-
-func (c *Config) LoadConfig(file string) {
+func LoadConfig(file string, v interface{}) error {
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	err = LoadConfigJson(b, c)
+	err = LoadConfigJson(b, v)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
 func LoadConfigJson(b []byte, v interface{}) error {

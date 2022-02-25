@@ -1,0 +1,4 @@
+{
+    "WmsDSN": "root:jjdev123@tcp(100.64.15.125:3306)/jj_wms?charset=utf8mb4&parseTime=True&loc=Local",
+    "port": 8644
+}
