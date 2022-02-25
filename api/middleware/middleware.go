@@ -71,7 +71,7 @@ func logger(l *zap.Logger) gin.HandlerFunc {
 			zap.String("query", query),
 			zap.String("ip", c.ClientIP()),
 			// zap.String("user-agent", c.Request.UserAgent()),
-			zap.String("error", c.Errors.ByType(gin.ErrorTypePrivate).String()),
+			zap.String("error", c.Errors.String()),
 			zap.Duration("cost", cost),
 		)
 	}

@@ -4,15 +4,15 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/devil-dwj/go-wms/cmd/protoc-gen-routers/generator"
-	_ "github.com/devil-dwj/go-wms/cmd/protoc-gen-routers/plugin/pms"
+	"github.com/devil-dwj/go-wms/cmd/generator"
+	_ "github.com/devil-dwj/go-wms/cmd/plugin/routers"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
 
-	g := generator.New()
+	g := generator.New("routers")
 
 	data, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
@@ -27,14 +27,14 @@ func main() {
 		g.Fail("no files to generate")
 	}
 
-	g.CommandLineParameters(g.Request.GetParameter())
+	// 命令行参数
+	// g.CommandLineParameters(g.Request.GetParameter())
 
 	g.WrapTypes()
-
 	g.SetPackageNames()
 	g.BuildTypeNameMap()
 
-	g.GenerateAllFiles()
+	g.GenerateAllFiles("routers")
 
 	data, err = proto.Marshal(g.Response)
 	if err != nil {

@@ -12,23 +12,19 @@ import (
 
 var WmsDB *gorm.DB
 
-func WmsMysql(dsn string, l *zap.Logger) error {
-
-	// zl := zapgorm2.New(l)
-	zl := log.NewGormLog(l)
-	zl.LogMode(gormlogger.Silent)
-	zl.SlowHold(time.Second)
+func GetDB(dsn string, l *zap.Logger) *gorm.DB {
+	zl := gormLog(l)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: zl,
 	})
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	sqlDB.SetMaxIdleConns(8)                   // 数据库连接数
@@ -36,7 +32,13 @@ func WmsMysql(dsn string, l *zap.Logger) error {
 	sqlDB.SetConnMaxIdleTime(time.Second * 30) // 连接池里的连接最大空闲时长，超时会被清理
 	sqlDB.SetConnMaxLifetime(time.Minute * 10) // 连接的最大时长
 
-	WmsDB = db
+	return db
+}
 
-	return nil
+func gormLog(l *zap.Logger) gormlogger.Interface {
+	zl := log.NewGormLog(l)
+	zl.LogMode(gormlogger.Silent)
+	zl.SlowHold(time.Second) // 数据库反应时间
+
+	return zl
 }

@@ -3,18 +3,22 @@ package main
 import (
 	"github.com/devil-dwj/go-wms/api"
 	"github.com/devil-dwj/go-wms/config"
+	"github.com/devil-dwj/go-wms/database/mysql"
 	"github.com/devil-dwj/go-wms/examples/pb"
 	"github.com/devil-dwj/go-wms/log"
 )
 
 type UserServer struct {
+	prps pb.UserProcedure
 }
 
-func NewUserServer() pb.UserHandler {
-	return &UserServer{}
+func NewUserServer(pr pb.UserProcedure) pb.UserHandler {
+	return &UserServer{prps: pr}
 }
 
 func (u *UserServer) Login(req *pb.LoginReq) (*pb.LoginRsp, error) {
+	_ = u.prps.GetRawDB()
+
 	return &pb.LoginRsp{
 		Passport: 1,
 		Name:     "dwj",
@@ -36,7 +40,7 @@ func main() {
 
 	a := api.New(8866, l)
 
-	userServer := NewUserServer()
+	userServer := NewUserServer(pb.NewUserProcedure(mysql.WmsDB))
 	pb.RegisterUserRouters(a, userServer)
 
 	a.Run()

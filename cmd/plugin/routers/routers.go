@@ -1,52 +1,51 @@
-package pms
+package routers
 
 import (
 	"fmt"
 
-	"github.com/devil-dwj/go-wms/cmd/protoc-gen-routers/generator"
+	"github.com/devil-dwj/go-wms/cmd/generator"
 
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"google.golang.org/protobuf/proto"
 
-	// pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	options "google.golang.org/genproto/googleapis/api/annotations"
 )
 
 func init() {
-	generator.RegisterPlugin(new(pms))
+	generator.RegisterPlugin(new(routers))
 }
 
 // 生成路由文件的插件实现
-type pms struct {
+type routers struct {
 	gen *generator.Generator
 }
 
 // 返回此插件名称
-func (g *pms) Name() string {
-	return "jjpms"
+func (g *routers) Name() string {
+	return "routers"
 }
 
 // 插件初始化 给generator调用
-func (g *pms) Init(gen *generator.Generator) {
+func (g *routers) Init(gen *generator.Generator) {
 	g.gen = gen
 }
 
 // 给定定义的类型名，返回目标对象
-func (g *pms) objectNamed(name string) generator.Object {
+func (g *routers) objectNamed(name string) generator.Object {
 	// g.gen.RecordTypeUse(name) // 记录使用
 	return g.gen.ObjectNamed(name)
 }
 
 // 给定定义的.proto名称，返回类型名
-func (g *pms) typeName(str string) string {
+func (g *routers) typeName(str string) string {
 	return g.gen.TypeName(g.objectNamed(str))
 }
 
 // P 转发给 g.gen.P.
-func (g *pms) P(args ...interface{}) { g.gen.P(args...) }
+func (g *routers) P(args ...interface{}) { g.gen.P(args...) }
 
 // 生成给定文件中的service代码
-func (g *pms) Generate(file *generator.FileDescriptor) {
+func (g *routers) Generate(file *generator.FileDescriptor) {
 
 	for i, service := range file.FileDescriptorProto.Service {
 		g.generateService(file, service, i)
@@ -54,14 +53,14 @@ func (g *pms) Generate(file *generator.FileDescriptor) {
 }
 
 // GenerateImports 生成文件导入
-func (g *pms) GenerateImports(file *generator.FileDescriptor, imports map[generator.GoImportPath]generator.GoPackageName) {
+func (g *routers) GenerateImports(file *generator.FileDescriptor, imports map[generator.GoImportPath]generator.GoPackageName) {
 	if len(file.FileDescriptorProto.Service) == 0 {
 		return
 	}
 }
 
 // generateService 为service生成所有代码
-func (g *pms) generateService(file *generator.FileDescriptor, service *descriptor.ServiceDescriptorProto, index int) {
+func (g *routers) generateService(file *generator.FileDescriptor, service *descriptor.ServiceDescriptorProto, index int) {
 	origServName := service.GetName()
 
 	// 转成驼峰命名
@@ -200,7 +199,7 @@ func (g *pms) generateService(file *generator.FileDescriptor, service *descripto
 						if field.GetType() == descriptor.FieldDescriptorProto_TYPE_INT32 {
 							g.P(fmt.Sprintf(`%s, err := strconv.Atoi(c.Query("%s"))`, fieldName, fieldName))
 							g.P("if err != nil {")
-							g.P("h.fail(c, err)")
+							g.P("h.fail(c, ", `fmt.Errorf("%s parameter err", "`, fieldName, `")`, ")")
 							g.P("return")
 							g.P("}")
 							g.P()
@@ -269,7 +268,7 @@ func (g *pms) generateService(file *generator.FileDescriptor, service *descripto
 	g.P()
 }
 
-func (g *pms) getRule(method *descriptor.MethodDescriptorProto) (string, string) {
+func (g *routers) getRule(method *descriptor.MethodDescriptorProto) (string, string) {
 	if method.Options == nil || !proto.HasExtension(method.Options, options.E_Http) {
 		return "", ""
 	}

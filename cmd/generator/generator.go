@@ -307,12 +307,12 @@ func (d *FileDescriptor) goPackageOption() (impPath GoImportPath, pkg GoPackageN
 }
 
 // goFileName returns the output name for the generated Go file.
-func (d *FileDescriptor) goFileName(pathType pathType) string {
+func (d *FileDescriptor) goFileName(pathType pathType, sufifix string) string {
 	name := *d.Name
 	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
 		name = name[:len(name)-len(ext)]
 	}
-	name += ".routers.pb.go"
+	name += "." + sufifix + ".pb.go"
 
 	if pathType == pathTypeSourceRelative {
 		return name
@@ -424,6 +424,8 @@ type Generator struct {
 	indent           string
 	pathType         pathType // How to generate output filenames.
 	writeOutput      bool
+
+	pluginType string
 }
 
 type pathType int
@@ -434,25 +436,26 @@ const (
 )
 
 // New creates a new generator and allocates the request and response protobufs.
-func New() *Generator {
+func New(pType string) *Generator {
 	g := new(Generator)
 	g.Buffer = new(bytes.Buffer)
 	g.Request = new(plugin.CodeGeneratorRequest)
 	g.Response = new(plugin.CodeGeneratorResponse)
+	g.pluginType = pType
 	return g
 }
 
 // Error reports a problem, including an error, and exits the program.
 func (g *Generator) Error(err error, msgs ...string) {
 	s := strings.Join(msgs, " ") + ":" + err.Error()
-	log.Print("protoc-gen-routers: error:", s)
+	log.Print("protoc-gen-: error:", s)
 	os.Exit(1)
 }
 
 // Fail reports a problem and exits the program.
 func (g *Generator) Fail(msgs ...string) {
 	s := strings.Join(msgs, " ")
-	log.Print("protoc-gen-routers: error:", s)
+	log.Print("protoc-gen-: error:", s)
 	os.Exit(1)
 }
 
@@ -497,7 +500,7 @@ func (g *Generator) CommandLineParameters(parameter string) {
 	if pluginList != "" {
 		// Amend the set of plugins.
 		enabled := map[string]bool{
-			"jjpms": true,
+			"routers": true,
 		}
 		for _, name := range strings.Split(pluginList, "+") {
 			enabled[name] = true
@@ -1052,7 +1055,7 @@ func (g *Generator) Out() {
 }
 
 // GenerateAllFiles generates the output for all the files we're outputting.
-func (g *Generator) GenerateAllFiles() {
+func (g *Generator) GenerateAllFiles(sufifix string) {
 	// Initialize the plugins
 	for _, p := range plugins {
 		p.Init(g)
@@ -1063,8 +1066,15 @@ func (g *Generator) GenerateAllFiles() {
 	genFileMap := make(map[*FileDescriptor]bool, len(g.genFiles))
 	for _, file := range g.genFiles {
 		genFileMap[file] = true
-		if !strings.HasSuffix(file.GetName(), "_service.proto") {
-			genFileMap[file] = false
+
+		if g.pluginType == "routers" {
+			if !strings.HasSuffix(file.GetName(), "_service.proto") {
+				genFileMap[file] = false
+			}
+		} else if g.pluginType == "procedure" {
+			if !strings.HasSuffix(file.GetName(), "_pr.proto") {
+				genFileMap[file] = false
+			}
 		}
 	}
 	for _, file := range g.allFiles {
@@ -1077,7 +1087,7 @@ func (g *Generator) GenerateAllFiles() {
 
 		g.generate(file)
 
-		fname := file.goFileName(g.pathType)
+		fname := file.goFileName(g.pathType, sufifix)
 		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
 			Name:    proto.String(fname),
 			Content: proto.String(g.String()),
@@ -1262,18 +1272,27 @@ func (g *Generator) generateImports() {
 	// reference it later. The same argument applies to the fmt and math packages.
 	g.P("import (")
 
-	g.P(`"github.com/devil-dwj/go-wms/api"`)
-	g.P(`"github.com/gin-gonic/gin"`)
-	g.P(`"net/http"`)
-	g.P(`"strconv"`)
+	if g.pluginType == "routers" {
+		g.P(`"fmt"`)
+		g.P(`"net/http"`)
+		g.P(`"strconv"`)
 
+		g.P(`"github.com/devil-dwj/go-wms/api"`)
+		g.P(`"github.com/gin-gonic/gin"`)
+
+	} else if g.pluginType == "procedure" {
+		g.P(`"gorm.io/gorm"`)
+	}
 	g.P(")")
 
 	g.P()
 
-	g.P("var (")
-	g.P(`_, _ = strconv.Atoi("1")`)
-	g.P(")")
+	if g.pluginType == "routers" {
+		g.P("var (")
+		g.P(`_, _ = strconv.Atoi("1")`)
+		g.P(`_ = fmt.Sprint("1")`)
+		g.P(")")
+	}
 
 	g.P()
 }
