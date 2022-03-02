@@ -87,7 +87,7 @@ func TestGoPackageOption(t *testing.T) {
 }
 
 func TestPackageNames(t *testing.T) {
-	g := New()
+	g := New("routers")
 	g.packageNames = make(map[GoImportPath]GoPackageName)
 	g.usedPackageNames = make(map[GoPackageName]bool)
 	for _, test := range []struct {

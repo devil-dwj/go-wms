@@ -22,16 +22,15 @@ type Api interface {
 type api struct {
 	log *zap.Logger
 	*gin.Engine
-	port      uint16
-	prefix    string
-	v         string
-	rootGroup *gin.RouterGroup
+	port   uint16
+	prefix string
+	v      string
 }
 
 func New(p uint16, l *zap.Logger) Api {
 	a := &api{
 		log:    l,
-		Engine: gin.Default(),
+		Engine: gin.New(),
 		port:   p,
 		prefix: "api",
 		v:      "v1",
@@ -41,17 +40,15 @@ func New(p uint16, l *zap.Logger) Api {
 	a.Use(middleware.WithLogger(l))
 	a.Use(middleware.WithRecovery(true))
 
-	a.rootGroup = a.Engine.Group("/")
-
 	return a
 }
 
 func (a *api) POST(path string, handle gin.HandlerFunc) gin.IRoutes {
-	return a.rootGroup.POST(path, handle)
+	return a.Engine.POST(path, handle)
 }
 
 func (a *api) GET(path string, handle gin.HandlerFunc) gin.IRoutes {
-	return a.rootGroup.GET(path, handle)
+	return a.Engine.GET(path, handle)
 }
 
 func (a *api) Use(middleware ...gin.HandlerFunc) gin.IRoutes {
