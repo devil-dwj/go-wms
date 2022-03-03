@@ -20,20 +20,18 @@ type JWT struct {
 type UserClaims struct {
 	jwt.StandardClaims
 	Username string `json:"username"`
-	Role     string `json:"role"`
 }
 
 func NewJWT(secretKey string, duration time.Duration) *JWT {
 	return &JWT{secretKey: secretKey, duration: duration}
 }
 
-func (j *JWT) Generate(username string, role string) (string, error) {
+func (j *JWT) Generate(username string) (string, error) {
 	claims := UserClaims{
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(j.duration).Unix(),
 		},
 		Username: username,
-		Role:     role,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -41,7 +39,7 @@ func (j *JWT) Generate(username string, role string) (string, error) {
 	return token.SignedString([]byte(j.secretKey))
 }
 
-func (j *JWT) Verify(token string) error {
+func (j *JWT) Verify(token string) (*UserClaims, error) {
 	verifyToken, err := jwt.ParseWithClaims(
 		token,
 		&UserClaims{},
@@ -56,13 +54,13 @@ func (j *JWT) Verify(token string) error {
 	)
 
 	if err != nil {
-		return ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
-	_, ok := verifyToken.Claims.(*UserClaims)
+	claims, ok := verifyToken.Claims.(*UserClaims)
 	if !ok {
-		return ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
-	return nil
+	return claims, nil
 }
