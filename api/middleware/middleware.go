@@ -120,3 +120,43 @@ func recovery(stack bool) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+type MiddleWareRecord struct {
+	Logger  *zap.Logger
+	Request *http.Request
+	Start   time.Time
+	Status  int
+	Err     string
+	Cost    time.Duration
+}
+
+func (r *MiddleWareRecord) Log() {
+	r.Logger.Info(
+		r.Request.URL.Path,
+		zap.Int("status", r.Status),
+		zap.String("path", r.Request.URL.Path),
+		zap.String("query", r.Request.URL.RawQuery),
+		zap.String("host", r.Request.Host),
+		zap.String("error", r.Err),
+		zap.Duration("cost", r.Cost),
+	)
+}
+
+func (r *MiddleWareRecord) LogRecovery(err interface{}) {
+	r.Logger.Error(
+		"[Recovery from panic]"+r.Request.URL.Path,
+		zap.Any("error", err),
+	)
+}
+
+func Logger(record *MiddleWareRecord) {
+	record.Log()
+}
+
+func Recovery(record *MiddleWareRecord) {
+	defer func() {
+		if err := recover(); err != nil {
+			record.LogRecovery(err)
+		}
+	}()
+}

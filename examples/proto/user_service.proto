@@ -5,6 +5,8 @@ package jj.wms;
 option go_package = "./;pb";
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
 import "user_pr.proto";
 
 service User {
@@ -13,6 +15,11 @@ service User {
             post: "api/v1/login"
             body: "*"
         };
-    };
+    }
 
+    rpc Info(google.protobuf.Empty) returns (LoginRsp) {
+        option (google.api.http) = {
+            get: "api/v1/info"
+        };
+    }
 }

@@ -166,7 +166,13 @@ func (g *Procedure) Generate(file *generator.FileDescriptor) {
 		g.P(resIdent)
 		g.P(resultIdent)
 		g.P(totalIdent)
-		g.P("err := r.db.")
+
+		if totalIdent != "" {
+			g.P("tx := r.db.Begin()")
+			g.P("err := tx.")
+		} else {
+			g.P("err := r.db.")
+		}
 
 		// iv field
 		ivTempl := ""
@@ -242,6 +248,15 @@ func (g *Procedure) Generate(file *generator.FileDescriptor) {
 
 		g.P("Error")
 		g.P()
+
+		if totalIdent != "" {
+			g.P("if err != nil {")
+			g.P("tx.Rollback()")
+			g.P("} else {")
+			g.P("err = tx.Commit().Error")
+			g.P("}")
+			g.P()
+		}
 
 		g.P(fmt.Sprintf("return %s%s%serr", returnRes, returnResult, returnTotal))
 		g.P("}")

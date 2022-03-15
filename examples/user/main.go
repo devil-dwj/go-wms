@@ -1,27 +1,52 @@
 package main
 
 import (
-	"github.com/devil-dwj/go-wms/api"
-	"github.com/devil-dwj/go-wms/config"
-	"github.com/devil-dwj/go-wms/database/mysql"
+	"context"
+	"fmt"
+
+	"github.com/devil-dwj/go-wms/api/engine"
+	"github.com/devil-dwj/go-wms/api/middleware"
+	"github.com/devil-dwj/go-wms/api/runtime"
 	"github.com/devil-dwj/go-wms/examples/pb"
 	"github.com/devil-dwj/go-wms/log"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type UserServer struct {
-	prps pb.UserProcedure
 }
 
-func NewUserServer(pr pb.UserProcedure) pb.UserHandler {
-	return &UserServer{prps: pr}
+func NewUserServer() *UserServer {
+	return &UserServer{}
 }
 
-func (u *UserServer) Login(req *pb.LoginReq) (*pb.LoginRsp, error) {
-	_ = u.prps.GetRawDB()
+func (u *UserServer) Login(
+	context context.Context,
+	req *pb.LoginReq,
+) (*pb.LoginRsp, error) {
 
 	return &pb.LoginRsp{
 		Passport: 1,
-		Name:     "dwj",
+		Name:     req.Account,
+		Role:     "role",
+	}, nil
+}
+
+func (u *UserServer) Info(context context.Context, req *emptypb.Empty) (*pb.LoginRsp, error) {
+	return &pb.LoginRsp{
+		Passport: 1,
+		Name:     "david",
+		Role:     "role",
+	}, nil
+}
+
+func (u *UserServer) UserInfo(
+	context context.Context,
+	req *pb.LoginReq,
+) (*pb.LoginRsp, error) {
+
+	return &pb.LoginRsp{
+		Passport: 1,
+		Name:     req.Account,
 		Role:     "role",
 	}, nil
 }
@@ -31,17 +56,35 @@ type Config struct {
 	Port   uint16
 }
 
+type AuthMiddle struct {
+}
+
+func (a *AuthMiddle) Auth(record *middleware.MiddleWareRecord) {
+	fmt.Println("auth !! ", record.Request.Header)
+}
+
 func main() {
 
-	c := new(Config)
-	config.MustLoad("config.json", c)
+	//c := new(Config)
+	//config.MustLoad("config.json", c)
 
 	l := log.MustLog("examples/example.log")
+	auth := &AuthMiddle{}
 
-	a := api.New(8866, l)
+	apiOpts := []runtime.ApiOption{
+		runtime.WithEngine(engine.NewGinEngine(l)),
+		runtime.WithPort(8686),
+		runtime.ChainMiddle(
+			middleware.Logger,
+			middleware.Recovery,
+		),
+	}
 
-	userServer := NewUserServer(pb.NewUserProcedure(mysql.WmsDB))
-	pb.RegisterUserRouters(a, userServer)
+	a := runtime.NewApi(apiOpts...)
+	a.Use(auth.Auth)
+
+	userServer := NewUserServer()
+	pb.RegisterUserRouter(a, userServer)
 
 	a.Run()
 }

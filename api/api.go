@@ -20,20 +20,17 @@ type Api interface {
 }
 
 type api struct {
-	log *zap.Logger
 	*gin.Engine
-	port   uint16
-	prefix string
-	v      string
+	log *zap.Logger
+
+	port uint16
 }
 
 func New(p uint16, l *zap.Logger) Api {
 	a := &api{
-		log:    l,
 		Engine: gin.New(),
+		log:    l,
 		port:   p,
-		prefix: "api",
-		v:      "v1",
 	}
 
 	a.Use(middleware.WithCors())

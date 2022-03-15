@@ -29,4 +29,5 @@ message PrPsLogin
 	LoginReq req = 1;
 	LoginRsp rsp = 2;
 	Result result = 3;                                  // 结果
+    int32 total_count = 4;
 }
