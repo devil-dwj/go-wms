@@ -3,7 +3,6 @@ module github.com/devil-dwj/go-wms
 go 1.16
 
 require (
-	github.com/devil-dwj/go-wms/cmd/protoc-gen-go-router v0.0.0-20220315004520-92154ac7261d // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.7
