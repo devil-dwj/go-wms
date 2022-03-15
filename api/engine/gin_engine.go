@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -41,6 +42,24 @@ func (engine *GinEngine) RegisterHandler(port int, handler runtime.EngineHandler
 	engine.handler = handler
 }
 
+func (engine *GinEngine) Log(handler runtime.MiddlewareFunc) {
+	engine.Engine.Use(func(ctx *gin.Context) {
+		r := &middleware.MiddleWareRecord{
+			Logger:  engine.l,
+			Request: ctx.Request,
+			Start:   time.Now(),
+		}
+
+		ctx.Next()
+
+		r.Status = ctx.Writer.Status()
+		r.Err = ctx.Errors.String()
+		r.Cost = time.Since(r.Start)
+
+		_ = handler(r)
+	})
+}
+
 func (engine *GinEngine) Use(handlers ...runtime.MiddlewareFunc) {
 	for _, handler := range handlers {
 		engine.Engine.Use(func(ctx *gin.Context) {
@@ -50,13 +69,14 @@ func (engine *GinEngine) Use(handlers ...runtime.MiddlewareFunc) {
 				Start:   time.Now(),
 			}
 
+			err := handler(r)
+			if err != nil {
+				engine.fail(ctx, err)
+				ctx.Abort()
+				return
+			}
+
 			ctx.Next()
-
-			r.Status = ctx.Writer.Status()
-			r.Err = ctx.Errors.String()
-			r.Cost = time.Since(r.Start)
-
-			handler(r)
 		})
 	}
 }
@@ -94,7 +114,8 @@ func (engine *GinEngine) GET(path string) {
 			return nil
 		}
 
-		reply, err := engine.handler(path, df, c.Request.Context())
+		ctx := context.WithValue(context.Background(), runtime.RequestKey{}, c.Request)
+		reply, err := engine.handler(path, df, ctx)
 		if err != nil {
 			engine.fail(c, err)
 		} else {
@@ -113,7 +134,8 @@ func (engine *GinEngine) POST(path string) {
 			return nil
 		}
 
-		reply, err := engine.handler(path, df, c.Request.Context())
+		ctx := context.WithValue(context.Background(), runtime.RequestKey{}, c.Request)
+		reply, err := engine.handler(path, df, ctx)
 		if err != nil {
 			engine.fail(c, err)
 		} else {

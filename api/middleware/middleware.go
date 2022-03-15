@@ -149,14 +149,17 @@ func (r *MiddleWareRecord) LogRecovery(err interface{}) {
 	)
 }
 
-func Logger(record *MiddleWareRecord) {
+func Logger(record *MiddleWareRecord) error {
 	record.Log()
+	return nil
 }
 
-func Recovery(record *MiddleWareRecord) {
+func Recovery(record *MiddleWareRecord) error {
 	defer func() {
 		if err := recover(); err != nil {
 			record.LogRecovery(err)
 		}
 	}()
+
+	return nil
 }

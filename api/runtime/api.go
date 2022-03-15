@@ -2,11 +2,12 @@ package runtime
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/devil-dwj/go-wms/api/middleware"
 )
+
+type RequestKey struct{}
 
 type methodHandler func(
 	srv interface{},
@@ -45,10 +46,11 @@ type EngineHandler func(
 	error,
 )
 
-type MiddlewareFunc func(v *middleware.MiddleWareRecord)
+type MiddlewareFunc func(v *middleware.MiddleWareRecord) error
 
 type Engine interface {
 	RegisterHandler(int, EngineHandler)
+	Log(MiddlewareFunc)
 	Use(...MiddlewareFunc)
 	POST(path string)
 	GET(path string)
@@ -63,6 +65,7 @@ type Api struct {
 type apiOptions struct {
 	Engine
 	port  int
+	log   MiddlewareFunc
 	chain []MiddlewareFunc
 }
 
@@ -94,6 +97,12 @@ func WithPort(p int) ApiOption {
 	})
 }
 
+func WithLog(f MiddlewareFunc) ApiOption {
+	return newFuncApiOption(func(ao *apiOptions) {
+		ao.log = f
+	})
+}
+
 func ChainMiddle(funcs ...MiddlewareFunc) ApiOption {
 	return newFuncApiOption(func(ao *apiOptions) {
 		ao.chain = append(ao.chain, funcs...)
@@ -111,13 +120,14 @@ func NewApi(opt ...ApiOption) *Api {
 		Routers: make(map[string]*routerInfo),
 	}
 
+	if opts.log != nil {
+		a.Log(opts.log)
+	}
+
 	chain := opts.chain
 	for _, c := range chain {
 		a.Use(c)
 	}
-
-	// a.Use(middleware.Logger)
-	// a.Use(middleware.Recovery)
 
 	a.opts.Engine.RegisterHandler(a.opts.port, a.engineBackHandler)
 
@@ -144,12 +154,17 @@ func (a *Api) RegisterRouter(rd *RouterDesc, srv interface{}) {
 	a.Routers[rd.ServiceName] = info
 }
 
+func (a *Api) Log(f MiddlewareFunc) {
+	a.opts.Engine.Log(f)
+}
+
 func (a *Api) Use(middle ...MiddlewareFunc) {
 	a.opts.Engine.Use(middle...)
 }
 
 func (a *Api) Run() error {
-	fmt.Println("start api server")
+	fmt.Println("start api server ", a.opts.port)
+
 	return a.opts.Engine.Run()
 }
 
@@ -160,15 +175,14 @@ func (a *Api) engineBackHandler(
 ) (interface{}, error) {
 	for _, info := range a.Routers {
 		methodDesc, ok := info.methods[path]
-		if !ok {
-			return nil, errors.New("not find register method")
+		if ok {
+			return methodDesc.Handler(
+				info.serveImpl,
+				ctx,
+				dec,
+			)
 		}
-
-		return methodDesc.Handler(
-			info.serveImpl,
-			ctx,
-			dec,
-		)
 	}
-	return nil, nil
+
+	return nil, fmt.Errorf("not find register method: %s", path)
 }
