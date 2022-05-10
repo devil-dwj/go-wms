@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/devil-dwj/go-wms/config"
-	"github.com/devil-dwj/go-wms/hash"
+	"github.com/devil-dwj/go-wms/base/config"
+	"github.com/devil-dwj/go-wms/base/hash"
 	"github.com/stretchr/testify/require"
 )
 

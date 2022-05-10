@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -11,7 +10,9 @@ import (
 
 	"github.com/devil-dwj/go-wms/api/middleware"
 	"github.com/devil-dwj/go-wms/api/runtime"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
 )
 
@@ -26,9 +27,10 @@ type GinEngine struct {
 	handler runtime.EngineHandler
 }
 
-func NewGinEngine(l *zap.Logger) *GinEngine {
+func NewGinEngine(port int, l *zap.Logger) *GinEngine {
 	e := &GinEngine{
 		Engine: gin.New(),
+		port:   port,
 		l:      l,
 	}
 
@@ -37,8 +39,7 @@ func NewGinEngine(l *zap.Logger) *GinEngine {
 	return e
 }
 
-func (engine *GinEngine) RegisterHandler(port int, handler runtime.EngineHandler) {
-	engine.port = port
+func (engine *GinEngine) Handler(handler runtime.EngineHandler) {
 	engine.handler = handler
 }
 
@@ -58,6 +59,10 @@ func (engine *GinEngine) Log(handler runtime.MiddlewareFunc) {
 
 		_ = handler(r)
 	})
+}
+
+func (engine *GinEngine) Tracer(serverName string) {
+	engine.Engine.Use(otelgin.Middleware(serverName))
 }
 
 func (engine *GinEngine) Use(handlers ...runtime.MiddlewareFunc) {
@@ -90,7 +95,11 @@ func (engine *GinEngine) GET(path string) {
 				fieldInfo := refV.Type().Field(i)
 				tag := fieldInfo.Tag
 				name := tag.Get("json")
-				name = strings.Split(name, ",")[0]
+				arr := strings.Split(name, ",")
+				if len(arr) < 1 {
+					continue
+				}
+				name = arr[0]
 				if name == "" {
 					continue
 				}
@@ -102,19 +111,22 @@ func (engine *GinEngine) GET(path string) {
 					if err != nil {
 						return err
 					}
-
 					refV.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(int32(paramInt)))
+				} else if fieldType == "int64" {
+					paramInt, err := strconv.Atoi(param)
+					if err != nil {
+						return err
+					}
+					refV.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(int64(paramInt)))
 				} else {
-
 					refV.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(param))
 				}
-
 			}
 
 			return nil
 		}
 
-		ctx := context.WithValue(context.Background(), runtime.RequestKey{}, c.Request)
+		ctx := runtime.NewRequestContext(c.Request.Context(), c.Request)
 		reply, err := engine.handler(path, df, ctx)
 		if err != nil {
 			engine.fail(c, err)
@@ -134,7 +146,7 @@ func (engine *GinEngine) POST(path string) {
 			return nil
 		}
 
-		ctx := context.WithValue(context.Background(), runtime.RequestKey{}, c.Request)
+		ctx := runtime.NewRequestContext(c.Request.Context(), c.Request)
 		reply, err := engine.handler(path, df, ctx)
 		if err != nil {
 			engine.fail(c, err)
@@ -166,4 +178,58 @@ func (engine *GinEngine) success(c *gin.Context, data interface{}) {
 			"msg":  "",
 			"data": data,
 		})
+}
+
+func Cors() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		method := c.Request.Method
+
+		origin := c.Request.Header.Get("Origin")
+
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization") //自定义 Header
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type")
+			c.Header("Access-Control-Allow-Credentials", "true")
+
+		}
+
+		if method == "OPTIONS" {
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Headers", "Content-Type,AccessToken,X-CSRF-Token, Authorization") //自定义 Header
+			c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Content-Type")
+			c.Header("Access-Control-Allow-Credentials", "true")
+			c.AbortWithStatus(http.StatusNoContent)
+		}
+
+		c.Next()
+	}
+}
+
+func CorsContrib() gin.HandlerFunc {
+	return cors.New(
+		cors.Config{
+			AllowAllOrigins: false,
+			AllowOrigins:    []string{"*"},
+			AllowMethods: []string{
+				"OPTIONS",
+				"GET",
+				"POST",
+				"PUT",
+				"PATCH",
+				"DELETE",
+				"FETCH",
+			},
+			AllowHeaders:           []string{"Authorization, Content-Length, X-CSRF-Token, Token,session", "Content-Type", "x-requested-with"},
+			AllowCredentials:       true,
+			ExposeHeaders:          []string{"Content-Length", "Content-Type"},
+			MaxAge:                 86400,
+			AllowWildcard:          true,
+			AllowBrowserExtensions: true,
+			AllowWebSockets:        true,
+			AllowFiles:             true,
+		},
+	)
 }

@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	gormPackage = protogen.GoImportPath("gorm.io/gorm")
+	gormPackage    = protogen.GoImportPath("gorm.io/gorm")
+	contextPackage = protogen.GoImportPath("context")
 )
 
 func generateFile(gen *protogen.Plugin, file *protogen.File) *protogen.GeneratedFile {
@@ -84,6 +85,8 @@ func interfaceSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.G
 	var rsp = ""
 	var result = ""
 	var total = ""
+	var totalPage = ""
+	var pageTotal = ""
 	for _, field := range message.Fields {
 		if field.GoName == "Req" && field.Message != nil {
 			req = "*" + g.QualifiedGoIdent(field.Message.GoIdent)
@@ -97,9 +100,15 @@ func interfaceSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.G
 		if field.GoName == "TotalCount" {
 			total = "int, "
 		}
+		if field.GoName == "TotalPage" {
+			totalPage = "int, "
+		}
+		if field.GoName == "PageTotal" {
+			pageTotal = "int, "
+		}
 	}
 
-	return message.GoIdent.GoName + "(" + req + ") (" + rsp + result + total + "error)"
+	return message.GoIdent.GoName + "(" + g.QualifiedGoIdent(contextPackage.Ident("Context")) + ", " + req + ") (" + rsp + result + total + totalPage + pageTotal + "error)"
 }
 
 func implFuncSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, message *protogen.Message, goStructImplName string) {
@@ -108,6 +117,8 @@ func implFuncSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 	var rsp = ""
 	var result = ""
 	var total = ""
+	var totalPage = ""
+	var pageTotal = ""
 	for _, field := range message.Fields {
 
 		if field.GoName == "Req" && field.Message != nil {
@@ -122,9 +133,15 @@ func implFuncSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 		if field.GoName == "TotalCount" {
 			total = "int, "
 		}
+		if field.GoName == "TotalPage" {
+			totalPage = "int, "
+		}
+		if field.GoName == "PageTotal" {
+			pageTotal = "int, "
+		}
 	}
 
-	g.P("func ", getEnclosureIdent(goStructImplName), message.GoIdent.GoName, "(", req, ") (", rsp, result, total, "error) {")
+	g.P("func ", getEnclosureIdent(goStructImplName), message.GoIdent.GoName, "(ctx context.Context, ", req, ") (", rsp, result, total, totalPage, pageTotal, "error) {")
 	// call prps
 	callPrpsSignature(gen, file, g, message)
 	g.P("}")
@@ -134,13 +151,17 @@ func implFuncSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 func callPrpsSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.GeneratedFile, message *protogen.Message) {
 
 	var (
-		resIdent    = ""
-		resultIdent = ""
-		totalIdent  = ""
+		resIdent       = ""
+		resultIdent    = ""
+		totalIdent     = ""
+		totalPageIdent = ""
+		pageTotalIdent = ""
 
-		returnRes    = ""
-		returnResult = ""
-		returnTotal  = ""
+		returnRes       = ""
+		returnResult    = ""
+		returnTotal     = ""
+		returnTotalPage = ""
+		returnPageTotal = ""
 	)
 
 	for _, field := range message.Fields {
@@ -159,22 +180,32 @@ func callPrpsSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 			totalIdent = "total := 0"
 			returnTotal = "total, "
 		}
+
+		if field.GoName == "TotalPage" {
+			totalPageIdent = "totalPage := 0"
+			returnTotalPage = "totalPage, "
+		}
+
+		if field.GoName == "PageTotal" {
+			pageTotalIdent = "pageTotal := 0"
+			returnPageTotal = "pageTotal, "
+		}
 	}
 
 	g.P(resIdent)
 	g.P(resultIdent)
 	g.P(totalIdent)
+	g.P(totalPageIdent)
+	g.P(pageTotalIdent)
 
-	if totalIdent != "" {
-		g.P("tx := r.db.Begin()")
-		g.P("err := tx.")
-	} else {
-		g.P("err := r.db.")
-	}
+	g.P("tx := r.db.WithContext(ctx).Begin()")
+	g.P("err := tx.")
 
 	// iv field
 	ivTempl := ""
 	ivTotal := ""
+	ivTotalPage := ""
+	ivPageTotal := ""
 	ivArg := ""
 	ivComma := ""
 	for _, field := range message.Fields {
@@ -196,12 +227,18 @@ func callPrpsSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 		if field.GoName == "TotalCount" {
 			ivTotal += ", @ov_total_count"
 		}
+		if field.GoName == "TotalPage" {
+			ivTotalPage += ", @ov_total_page"
+		}
+		if field.GoName == "PageTotal" {
+			ivPageTotal += ", @ov_page_total"
+		}
 	}
 
 	if ivTempl != "" {
 		// 有入参
-		g.P(fmt.Sprintf(`Raw("call %s(@ov_return%s%s)"%s`,
-			SnakeCase(message.GoIdent.GoName), ivTempl, ivTotal, ivComma))
+		g.P(fmt.Sprintf(`Raw("call %s(@ov_return%s%s%s%s)"%s`,
+			SnakeCase(message.GoIdent.GoName), ivTempl, ivTotal, ivTotalPage, ivPageTotal, ivComma))
 		g.P(fmt.Sprintf("%s).", ivArg))
 		if resIdent != "" {
 			g.P("Scan(&res).")
@@ -220,6 +257,14 @@ func callPrpsSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 			g.P(`Raw("select @ov_total_count").`)
 			g.P("Scan(&total).")
 		}
+		if totalPageIdent != "" {
+			g.P(`Raw("select @ov_total_page").`)
+			g.P("Scan(&totalPage).")
+		}
+		if pageTotalIdent != "" {
+			g.P(`Raw("select @ov_page_total").`)
+			g.P("Scan(&pageTotal).")
+		}
 
 	} else {
 		// 无入参
@@ -236,21 +281,27 @@ func callPrpsSignature(gen *protogen.Plugin, file *protogen.File, g *protogen.Ge
 			g.P(`Raw("select @ov_total_count").`)
 			g.P("Scan(&total).")
 		}
+		if totalPageIdent != "" {
+			g.P(`Raw("select @ov_total_page").`)
+			g.P("Scan(&totalPage).")
+		}
+		if pageTotalIdent != "" {
+			g.P(`Raw("select @ov_page_total").`)
+			g.P("Scan(&pageTotal).")
+		}
 	}
 
 	g.P("Error")
 	g.P()
 
-	if totalIdent != "" {
-		g.P("if err != nil {")
-		g.P("tx.Rollback()")
-		g.P("} else {")
-		g.P("err = tx.Commit().Error")
-		g.P("}")
-		g.P()
-	}
+	g.P("if err != nil {")
+	g.P("tx.Rollback()")
+	g.P("} else {")
+	g.P("err = tx.Commit().Error")
+	g.P("}")
+	g.P()
 
-	g.P(fmt.Sprintf("return %s%s%serr", returnRes, returnResult, returnTotal))
+	g.P(fmt.Sprintf("return %s%s%s%s%serr", returnRes, returnResult, returnTotal, returnTotalPage, returnPageTotal))
 }
 
 func getEnclosureIdent(name string) string {

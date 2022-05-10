@@ -38,7 +38,7 @@ func getEncoder() zapcore.Encoder {
 	e.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
 	e.TimeKey = "time"
 	e.EncodeLevel = zapcore.CapitalLevelEncoder
-	e.EncodeDuration = zapcore.SecondsDurationEncoder
+	e.EncodeDuration = zapcore.MillisDurationEncoder
 	e.EncodeCaller = zapcore.ShortCallerEncoder
 
 	return zapcore.NewConsoleEncoder(e)
