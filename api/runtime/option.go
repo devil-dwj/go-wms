@@ -11,6 +11,7 @@ type apiOptions struct {
 	chain    []MiddlewareFunc
 	trace    bool
 	r        redis.Basic
+	static   string
 }
 
 type ApiOption interface {
@@ -62,5 +63,11 @@ func WithTracing(b bool) ApiOption {
 func WithRedis(r redis.Basic) ApiOption {
 	return newFuncApiOption(func(ao *apiOptions) {
 		ao.r = r
+	})
+}
+
+func WithStatic(path string) ApiOption {
+	return newFuncApiOption(func(ao *apiOptions) {
+		ao.static = path
 	})
 }

@@ -65,6 +65,10 @@ func (engine *GinEngine) Tracer(serverName string) {
 	engine.Engine.Use(otelgin.Middleware(serverName))
 }
 
+func (engine *GinEngine) Static(path string) {
+	engine.Engine.StaticFS(path, http.Dir(path))
+}
+
 func (engine *GinEngine) Use(handlers ...runtime.MiddlewareFunc) {
 	for _, handler := range handlers {
 		engine.Engine.Use(func(ctx *gin.Context) {
@@ -161,10 +165,17 @@ func (engine *GinEngine) Run() error {
 }
 
 func (engine *GinEngine) fail(c *gin.Context, err error) {
+	var code int32 = 1
+	if e, ok := err.(interface {
+		Code() int32
+	}); ok {
+		code = e.Code()
+	}
+
 	c.JSON(
 		http.StatusBadRequest,
 		gin.H{
-			"code": 1,
+			"code": code,
 			"msg":  err.Error(),
 			"data": "",
 		})

@@ -111,6 +111,14 @@ func NewApi(l *zap.Logger, opt ...ApiOption) *Api {
 		}
 	}
 
+	if opts.static != "" {
+		if l, ok := opts.Engine.(interface {
+			Static(path string)
+		}); ok {
+			l.Static(opts.static)
+		}
+	}
+
 	a.restRegist()
 	a.handler()
 
