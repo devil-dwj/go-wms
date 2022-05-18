@@ -113,13 +113,13 @@ func (engine *GinEngine) GET(path string) {
 				if fieldType == "int32" {
 					paramInt, err := strconv.Atoi(param)
 					if err != nil {
-						return err
+						return fmt.Errorf("query parma [%s]", name)
 					}
 					refV.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(int32(paramInt)))
 				} else if fieldType == "int64" {
 					paramInt, err := strconv.Atoi(param)
 					if err != nil {
-						return err
+						return fmt.Errorf("query parma [%s]", name)
 					}
 					refV.FieldByName(fieldInfo.Name).Set(reflect.ValueOf(int64(paramInt)))
 				} else {
@@ -171,7 +171,7 @@ func (engine *GinEngine) fail(c *gin.Context, err error) {
 	}); ok {
 		code = e.Code()
 	}
-
+	c.Error(err)
 	c.JSON(
 		http.StatusBadRequest,
 		gin.H{
