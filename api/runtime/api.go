@@ -64,9 +64,10 @@ type Api struct {
 
 type apiOptions struct {
 	Engine
-	port  int
-	log   MiddlewareFunc
-	chain []MiddlewareFunc
+	port   int
+	log    MiddlewareFunc
+	chain  []MiddlewareFunc
+	static string
 }
 
 type ApiOption interface {
@@ -109,6 +110,12 @@ func ChainMiddle(funcs ...MiddlewareFunc) ApiOption {
 	})
 }
 
+func WithStatic(path string) ApiOption {
+	return newFuncApiOption(func(ao *apiOptions) {
+		ao.static = path
+	})
+}
+
 func NewApi(opt ...ApiOption) *Api {
 	opts := apiOptions{}
 	for _, o := range opt {
@@ -127,6 +134,14 @@ func NewApi(opt ...ApiOption) *Api {
 	chain := opts.chain
 	for _, c := range chain {
 		a.Use(c)
+	}
+
+	if opts.static != "" {
+		if l, ok := a.opts.Engine.(interface {
+			Static(path string)
+		}); ok {
+			l.Static(opts.static)
+		}
 	}
 
 	a.opts.Engine.RegisterHandler(a.opts.port, a.engineBackHandler)

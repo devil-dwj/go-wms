@@ -144,6 +144,10 @@ func (engine *GinEngine) POST(path string) {
 	})
 }
 
+func (engine *GinEngine) Static(path string) {
+	engine.Engine.StaticFS(path, http.Dir(path))
+}
+
 func (engine *GinEngine) Run() error {
 	return engine.Engine.Run(fmt.Sprintf(":%d", engine.port))
 }
