@@ -24,7 +24,7 @@ func MustLog(logname string) *zap.Logger {
 func getWriter(name string) zapcore.WriteSyncer {
 	l := &lumberjack.Logger{
 		Filename:   name,
-		MaxSize:    500,
+		MaxSize:    100,
 		MaxBackups: 500,
 		MaxAge:     30,
 		LocalTime:  true,

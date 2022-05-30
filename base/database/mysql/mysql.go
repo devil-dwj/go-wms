@@ -11,8 +11,8 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-func GetDB(dsn string, l *zap.Logger) *gorm.DB {
-	zl := gormLog(l)
+func GetDB(dsn string, l *zap.Logger, holdTime time.Duration) *gorm.DB {
+	zl := gormLog(l, holdTime)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: zl,
@@ -37,10 +37,10 @@ func GetDB(dsn string, l *zap.Logger) *gorm.DB {
 	return db
 }
 
-func gormLog(l *zap.Logger) gormlogger.Interface {
+func gormLog(l *zap.Logger, holdTime time.Duration) gormlogger.Interface {
 	zl := log.NewGormLog(l)
 	zl.LogMode(gormlogger.Silent)
-	zl.SlowHold(time.Millisecond * 100) // 数据库反应时间, 超过打印日志
+	zl.SlowHold(holdTime) // 数据库反应时间, 超过打印日志
 
 	return zl
 }
