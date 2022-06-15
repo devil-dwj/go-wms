@@ -67,7 +67,7 @@ type apiOptions struct {
 	port   int
 	log    MiddlewareFunc
 	chain  []MiddlewareFunc
-	static string
+	static []string
 }
 
 type ApiOption interface {
@@ -110,7 +110,7 @@ func ChainMiddle(funcs ...MiddlewareFunc) ApiOption {
 	})
 }
 
-func WithStatic(path string) ApiOption {
+func WithStatic(path []string) ApiOption {
 	return newFuncApiOption(func(ao *apiOptions) {
 		ao.static = path
 	})
@@ -136,11 +136,13 @@ func NewApi(opt ...ApiOption) *Api {
 		a.Use(c)
 	}
 
-	if opts.static != "" {
+	if len(opts.static) != 0 {
 		if l, ok := a.opts.Engine.(interface {
 			Static(path string)
 		}); ok {
-			l.Static(opts.static)
+			for _, path := range opts.static {
+				l.Static(path)
+			}
 		}
 	}
 
