@@ -24,25 +24,38 @@ type ProducerConfig struct {
 	Delivery uint8
 }
 
+var DefaultProducerConfig = ProducerConfig{
+	ExchangeName: "",
+	ExchangeType: "direct",
+	RoutingKey:   "",
+	Durable:      true,
+	AutoDelete:   false,
+	Internal:     false,
+	NoWait:       false,
+	Delivery:     0,
+}
+
 type Producer struct {
 	config *ProducerConfig
 	conn   *amqp.Connection
 	ch     *amqp.Channel
 }
 
-func NewProducer(uri string, config *ProducerConfig) (*Producer, error) {
+func NewProducer(uri string, config *ProducerConfig) *Producer {
 	p := &Producer{}
 	p.config = config
 
 	conn, err := amqp.Dial(uri)
 	if err != nil {
-		return nil, err
+		// return nil, err
+		panic(err)
 	}
 	p.conn = conn
 
 	ch, err := conn.Channel()
 	if err != nil {
-		return nil, err
+		// return nil, err
+		panic(err)
 	}
 	p.ch = ch
 
@@ -56,10 +69,11 @@ func NewProducer(uri string, config *ProducerConfig) (*Producer, error) {
 		nil,
 	)
 	if err != nil {
-		return nil, err
+		// return nil, err
+		panic(err)
 	}
 
-	return p, nil
+	return p
 }
 
 func (p *Producer) Publish(body []byte) error {
@@ -85,5 +99,6 @@ func (p *Producer) Publish(body []byte) error {
 }
 
 func (p *Producer) Close() error {
+	p.ch.Close()
 	return p.conn.Close()
 }

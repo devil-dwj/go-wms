@@ -57,7 +57,8 @@ func (engine *GinEngine) Log(handler runtime.MiddlewareFunc) {
 		r.Err = ctx.Errors.String()
 		r.Cost = time.Since(r.Start)
 
-		_ = handler(r)
+		pctx := runtime.NewRequestContext(ctx.Request.Context(), ctx.Request)
+		_ = handler(pctx, r)
 	})
 }
 
@@ -78,7 +79,8 @@ func (engine *GinEngine) Use(handlers ...runtime.MiddlewareFunc) {
 				Start:   time.Now(),
 			}
 
-			err := handler(r)
+			pctx := runtime.NewRequestContext(ctx.Request.Context(), ctx.Request)
+			err := handler(pctx, r)
 			if err != nil {
 				engine.fail(ctx, err)
 				ctx.Abort()
@@ -165,15 +167,17 @@ func (engine *GinEngine) Run() error {
 }
 
 func (engine *GinEngine) fail(c *gin.Context, err error) {
+	statusBadRequest := http.StatusBadRequest
 	var code int32 = 1
 	if e, ok := err.(interface {
 		Code() int32
 	}); ok {
 		code = e.Code()
+		statusBadRequest = http.StatusOK
 	}
 	c.Error(err)
 	c.JSON(
-		http.StatusBadRequest,
+		statusBadRequest,
 		gin.H{
 			"code": code,
 			"msg":  err.Error(),

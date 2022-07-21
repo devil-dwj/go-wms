@@ -47,7 +47,7 @@ type EngineHandler func(
 	error,
 )
 
-type MiddlewareFunc func(v *middleware.MiddleWareRecord) error
+type MiddlewareFunc func(context.Context, *middleware.MiddleWareRecord) error
 
 type RestRegister func(string)
 
@@ -166,7 +166,7 @@ func (a *Api) handler() {
 					defer func() {
 						if err := recover(); err != nil {
 							if r, b := RequestFromContext(ctx); b {
-								a.opts.recovery(&middleware.MiddleWareRecord{
+								a.opts.recovery(ctx, &middleware.MiddleWareRecord{
 									Logger:  a.l,
 									Request: r,
 									Err:     err,

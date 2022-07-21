@@ -24,6 +24,15 @@ func Generate(claims jwt.Claims, secret string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
+func ExtractTokenFromRequest(r *http.Request) (string, error) {
+	token, err := request.AuthorizationHeaderExtractor.ExtractToken(r)
+	if err != nil {
+		return "", errors.New("ExtractTokenFromRequestFailed")
+	}
+
+	return token, nil
+}
+
 func VerityExtractTokenFromRequest(r *http.Request, claims jwt.Claims, secret string) (*jwt.Token, error) {
 	token, err := request.AuthorizationHeaderExtractor.ExtractToken(r)
 	if err != nil {
@@ -52,4 +61,27 @@ func Verify(token string, claims jwt.Claims, secret string) (*jwt.Token, error) 
 	}
 
 	return verifyToken, nil
+}
+
+func TokenMapClaims(token string, secret string) map[string]interface{} {
+	parMap := make(map[string]interface{})
+
+	parseAuth, err := jwt.Parse(token, func(*jwt.Token) (interface{}, error) {
+		// return []byte("My Secret"), nil
+		return []byte(secret), nil
+	})
+	if err != nil {
+		return parMap
+	}
+
+	claim, ok := parseAuth.Claims.(jwt.MapClaims)
+	if !ok {
+		return parMap
+	}
+
+	for key, val := range claim {
+		parMap[key] = val
+	}
+
+	return parMap
 }

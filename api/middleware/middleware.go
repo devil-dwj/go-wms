@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -37,17 +38,17 @@ func (r *MiddleWareRecord) LogRecovery() {
 	)
 }
 
-func Logger(record *MiddleWareRecord) error {
+func Logger(ctx context.Context, record *MiddleWareRecord) error {
 	record.Log()
 	return nil
 }
 
-func Recovery(record *MiddleWareRecord) error {
+func Recovery(ctx context.Context, record *MiddleWareRecord) error {
 	record.LogRecovery()
 	return nil
 }
 
-func Tracing(record *MiddleWareRecord) error {
+func Tracing(ctx context.Context, record *MiddleWareRecord) error {
 
 	return nil
 }

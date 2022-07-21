@@ -26,6 +26,15 @@ type ConsumerConfig struct {
 	Tag     string
 }
 
+var DefaultConsumerConfig = ConsumerConfig{
+	Durable:    true,
+	AutoDelete: false,
+	Internal:   false,
+	Exclusive:  false,
+	NoWait:     false,
+	AutoAck:    false,
+}
+
 type Consumer struct {
 	config *ConsumerConfig
 	conn   *amqp.Connection
@@ -33,7 +42,7 @@ type Consumer struct {
 	queue  amqp.Queue
 }
 
-func NewConsumer(uri string, config *ConsumerConfig) (*Consumer, error) {
+func NewConsumer(uri string, config *ConsumerConfig) *Consumer {
 	c := &Consumer{
 		config: config,
 	}
@@ -42,26 +51,26 @@ func NewConsumer(uri string, config *ConsumerConfig) (*Consumer, error) {
 
 	c.conn, err = amqp.Dial(uri)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	c.ch, err = c.conn.Channel()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	err = c.ch.ExchangeDeclare(
-		c.config.ExchangeName,
-		c.config.ExchangeType,
-		c.config.Durable,
-		c.config.AutoDelete,
-		c.config.Internal,
-		c.config.NoWait,
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
+	// err = c.ch.ExchangeDeclare(
+	// 	c.config.ExchangeName,
+	// 	c.config.ExchangeType,
+	// 	c.config.Durable,
+	// 	c.config.AutoDelete,
+	// 	c.config.Internal,
+	// 	c.config.NoWait,
+	// 	nil,
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	c.queue, err = c.ch.QueueDeclare(
 		c.config.QueueName,
@@ -72,10 +81,10 @@ func NewConsumer(uri string, config *ConsumerConfig) (*Consumer, error) {
 		nil,
 	)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return c, nil
+	return c
 }
 
 func (c *Consumer) Consumer() (<-chan amqp.Delivery, error) {
